@@ -13,14 +13,16 @@ int main(int argc, char **argv)
     // parse separator argument
     std::string separator = "";
     std::string arg = "";
-    for (int i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++)
+    {
         arg = argv[i];
-        if (arg == "--separator") {
-            separator = argv[i+1];
-            
+        if (arg == "--separator")
+        {
+            separator = argv[i + 1];
+
             // remove separator from argv to avoid errors later
-            argv[i] = argv[argc-2];
-            argv[i+1] = argv[argc-1];
+            argv[i] = argv[argc - 2];
+            argv[i + 1] = argv[argc - 1];
             argc -= 2;
 
             break;
@@ -29,7 +31,6 @@ int main(int argc, char **argv)
 
     // parse llamacpp arguments
     gpt_params params;
-    llama_sampling_params & sparams = params.sparams;
     if (gpt_params_parse(argc, argv, params) == false)
     {
         fprintf(stderr, "%s: error: failed to parse command line arguments\n", __func__);
@@ -60,10 +61,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    
     // print system information
     LOG_TEE("%s\n", get_system_info(params).c_str());
-    
+
     // total length of the sequences including the prompt
     int n_len = params.n_predict;
 
@@ -148,7 +148,7 @@ int main(int argc, char **argv)
                     break;
                 }
 
-                std::cout <<  llama_token_to_piece(ctx, new_token_id).c_str();
+                std::cout << llama_token_to_piece(ctx, new_token_id).c_str();
                 std::cout << std::flush;
 
                 // prepare the next batch
