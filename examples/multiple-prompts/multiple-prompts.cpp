@@ -31,6 +31,7 @@ int main(int argc, char **argv)
 
     // parse llamacpp arguments
     gpt_params params;
+    llama_sampling_params &sparams = params.sparams;
     if (gpt_params_parse(argc, argv, params) == false)
     {
         fprintf(stderr, "%s: error: failed to parse command line arguments\n", __func__);
@@ -115,6 +116,8 @@ int main(int argc, char **argv)
             return 1;
         }
 
+        struct llama_sampling_context *ctx_sampling = llama_sampling_init(sparams);
+
         int n_cur = batch.n_tokens;
         int n_decode = 0;
 
@@ -124,38 +127,26 @@ int main(int argc, char **argv)
         {
             // sample the next token
             {
-                auto n_vocab = llama_n_vocab(model);
-                auto *logits = llama_get_logits_ith(ctx, batch.n_tokens - 1);
+                const llama_token id = llama_sampling_sample(ctx_sampling, ctx, NULL, batch.n_tokens - 1);
 
-                std::vector<llama_token_data> candidates;
-                candidates.reserve(n_vocab);
-
-                for (llama_token token_id = 0; token_id < n_vocab; token_id++)
-                {
-                    candidates.emplace_back(llama_token_data{token_id, logits[token_id], 0.0f});
-                }
-
-                llama_token_data_array candidates_p = {candidates.data(), candidates.size(), false};
-
-                // sample the most likely token
-                const llama_token new_token_id = llama_sample_token_greedy(ctx, &candidates_p);
+                llama_sampling_accept(ctx_sampling, ctx, id, true);
 
                 // is it an end of stream?
-                if (new_token_id == llama_token_eos(model) || n_cur == n_len)
+                if (id == llama_token_eos(model) || n_cur == n_len)
                 {
                     std::cout << std::endl;
 
                     break;
                 }
 
-                std::cout << llama_token_to_piece(ctx, new_token_id).c_str();
+                std::cout << llama_token_to_piece(ctx, id).c_str();
                 std::cout << std::flush;
 
                 // prepare the next batch
                 llama_batch_clear(batch);
 
                 // push this new token for next evaluation
-                llama_batch_add(batch, new_token_id, n_cur, {0}, true);
+                llama_batch_add(batch, id, n_cur, {0}, true);
 
                 n_decode += 1;
             }
@@ -182,6 +173,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "\n");
 
         llama_batch_free(batch);
+
+        llama_sampling_free(ctx_sampling);
 
         llama_kv_cache_clear(ctx);
 
